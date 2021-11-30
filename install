@@ -1,0 +1,100 @@
+echo installing kubernetes  #########################################################################################################################
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+echo "$(<kubectl.sha256) kubectl" | sha256sum --check
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+chmod +x kubectl
+mkdir -p ~/.local/bin/kubectl
+mv ./kubectl ~/.local/bin/kubectl
+export PATH=$PATH:~/.local/bin/kubectl
+kubectl version --client
+
+echo installing docker  ##############################################################################################################################
+
+sudo apt-get remove docker docker-engine docker.io containerd runc
+
+sudo apt-get update
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker
+
+sudo systemctl enable docker.service
+sudo systemctl enable containerd.service
+
+echo installing minikube #############################################################################################################################
+
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+minikube start
+kubectl get po -A
+
+echo installing kubernetes dashboard  #################################################################################################################
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.4.0/aio/deploy/recommended.yaml
+
+kubectl proxy &
+
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+
+echo installing helm  #################################################################################################################################
+
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+
+echo installing spark #################################################################################################################################
+
+sudo apt install mlocate
+sudp updatedb
+
+https://dlcdn.apache.org/spark/spark-3.1.2/spark-3.1.2-bin-hadoop3.2.tgz
+
+sudo tar -xvf spark-3.1.2-bin-hadoop3.2
+
+sudo mv spark-3.1.2-bin-hadoop3.2 /opt/spark
+
+
+echo installing java 11 ################################################################################################################################
+sudo apt-get install openjdk-11-jdk
+
+
+
+
+echo set environment variable 
+
+vi ~/.bashrc
+
+alias python=python3
+JAVA_HOME='/usr/lib/jvm/java-11-openjdk-amd64/'
+SPARK_HOME='/opt/spark'
+alias pyspark=$SPARK_HOME/bin/pyspark
+alias spark-shell=$SPARK_HOME/bin/spark-shell
+
+
+
+
+
+spark operator 
+
+helm repo add spark-operator https://googlecloudplatform.github.io/spark-on-k8s-operator
+
+kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/master/installer/volcano-development.yaml
+
+helm install my-release spark-operator/spark-operator --namespace spark-operator --set webhook.enable=true --set enableBatchScheduler=true   --create-namespace
